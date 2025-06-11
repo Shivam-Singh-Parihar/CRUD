@@ -10,15 +10,21 @@
                 <h5 class="mb-0">Add New Post</h5>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label for="title" class="form-label">Name</label>
-                    <input type="text" class="form-control" id="name" placeholder="Enter title">
-                </div>
-                <div class="mb-3">
-                    <label for="body" class="form-label">description</label>
-                    <textarea class="form-control" id="description" rows="3" placeholder="Enter description"></textarea>
-                </div>
-                <button type="button" class="btn btn-primary" id="addBtn">Add Post</button>
+                <form id="postForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="name" placeholder="Enter title">
+                    </div>
+                    <div class="mb-3">
+                        <label for="body" class="form-label">description</label>
+                        <textarea class="form-control" id="description" rows="3" placeholder="Enter description"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="body" class="form-label">Image</label>
+                        <input type="file" id="image" name="image">
+                    </div>
+                    <button type="button" class="btn btn-primary" id="addBtn">Add Post</button>
+                </form>
             </div>
         </div>
         <!-- Posts Table -->
@@ -59,15 +65,19 @@
                 url: '/ajax-posts',
                 type: 'GET',
                 success: function(data) {
-                    // console.log(data);
+                    console.log(data);
                     let rows = '';
                     $.each(data, function(index, post) {
                         rows += `<tr>
-                            <td>${post.id}</td>
-                            <td contenteditable="true" class="edit-name" data-id="${post.id}">${post.name}</td>
-                            <td contenteditable="true" class="edit-description" data-id="${post.id}">${post.description}</td>
-                            <td><button class="deleteBtn" data-id="${post.id}">Delete</button></td>
-                            </tr>`
+    <td>${post.id}</td>
+    <td contenteditable="true" class="edit-name" data-id="${post.id}">${post.name}</td>
+    <td contenteditable="true" class="edit-description" data-id="${post.id}">${post.description}</td>
+     <td>
+        <img src="/${post.file}" width="50">
+        <input type="file" class="edit-image" data-id="${post.id}" />
+    </td>
+    <td><button class="deleteBtn" data-id="${post.id}">Delete</button></td>
+</tr>`;
                     });
                     $('#postTable').html(rows);
                 }
@@ -76,54 +86,74 @@
         loadPosts();
         //add new post
         $('#addBtn').click(function() {
-            const name = $('#name').val();
-            const description = $('#description').val();
+            let formData = new FormData();
+            formData.append('name', $('#name').val());
+            formData.append('description', $('#description').val());
+            formData.append('image', $('#image')[0].files[0]);
+
             $.ajax({
                 url: '/ajax-posts',
-                type: 'Post',
-                data: {
-                    name: name,
-                    description: description
-                },
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
                 success: function() {
                     $('#name').val('');
                     $('#description').val('');
-
-                    alert = ` <div class="alert alert-success alert-dismissible fade show" role="alert">
-  <strong>Post</strong> post created sucecess fully
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>`
-
-                    $('.alertBox').html(alert);
+                    $('#image').val('');
+                    $('.alertBox').html(
+                        `<div class="alert alert-success">Post created successfully</div>`);
                     loadPosts();
                 }
             });
         });
         //updte post on blur
-        $(document).on('blur', '.edit-name', '.edit-description', function() {
-            const id = $(this).data('id');
-            const row = $(this).closest('tr');
-            const name = row.find('.edit-name').text();
-            const description = row.find('.edit-description').text();
-            console.log(name);
-            console.log(description);
+        // Function to update post
+        function updatePost(row, id) {
+            const name = row.find('.edit-name').text().trim();
+            const description = row.find('.edit-description').text().trim();
+            const imageInput = row.find('.edit-image')[0];
+            const formData = new FormData();
+
+            formData.append('name', name);
+            formData.append('description', description);
+            formData.append('_method', 'PUT');
+
+            if (imageInput && imageInput.files.length > 0) {
+                formData.append('image', imageInput.files[0]);
+            }
+
             $.ajax({
                 url: `/ajax-posts/${id}`,
-                type: 'PUT',
-                data: {
-                    name: name,
-                    description: description,
-                },
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
                 success: function() {
-                    alert = ` <div class="alert alert-success alert-dismissible fade show" role="alert">
-  <strong>Post</strong> post updted sucecess fully
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>`
-                    $('.alertBox').html(alert);
+                    $('.alertBox').html(`
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <strong>Post</strong> updated successfully
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>`);
                     loadPosts();
                 }
             });
+        }
+
+        // ✅ Update on blur (name or description)
+        $(document).on('blur', '.edit-name, .edit-description', function() {
+            const row = $(this).closest('tr');
+            const id = $(this).data('id');
+            updatePost(row, id);
         });
+
+        // ✅ Update on image change (triggers same update logic)
+        $(document).on('change', '.edit-image', function() {
+            const row = $(this).closest('tr');
+            const id = $(this).data('id');
+            updatePost(row, id);
+        });
+
         $(document).on('click', '.deleteBtn', function() {
             const id = $(this).data('id');
             $.ajax({
