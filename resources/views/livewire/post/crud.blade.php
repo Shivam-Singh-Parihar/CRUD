@@ -34,6 +34,23 @@
                         @enderror
                     </small>
                 </div>
+
+                <div class="mb-3">
+                    <label for="image" class="form-label">Image</label>
+                    <input type="file" id="image" name="image" wire:model="image">
+                    <small class="text-danger">
+                        @error('image')
+                            {{ $message }}
+                        @enderror
+                    </small>
+
+                   @if ($image instanceof \Livewire\TemporaryUploadedFile)
+    <img src="{{ $image->temporaryUrl() }}" width="120">
+@elseif ($imagePreview)
+    <img src="{{ asset('storage/'.$imagePreview) }}" width="120">
+@endif
+
+                </div>
                 <button type="submit" class="btn btn-primary"
                     id="addBtn">{{ $postId ? 'Update Post' : 'Add Post' }}</button>
                 @if ($postId)
@@ -56,6 +73,7 @@
                             <th>ID</th>
                             <th>Name</th>
                             <th>Description</th>
+                            <th>Image</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -70,6 +88,13 @@
                                 </td>
                                 <td>
                                     {{ $post->description }}
+                                </td>
+                                <td>
+                                    @if ($post->file)
+                                        <img src="{{('storage/'.$post->file) }}" width="50" alt="Post Image">
+                                    @else
+                                        No Image
+                                    @endif
                                 </td>
                                 <td>
                                     <button wire:click="editPost({{ $post->id }})">Edit</button>
